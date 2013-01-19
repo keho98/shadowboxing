@@ -1,0 +1,55 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <script type="text/javascript" src="js/kinect.js"></script>
+    </head>
+
+    <body>
+        <canvas id="jointTracker" width="640" height="480"></canvas>  
+        <script type="text/javascript">
+        var canvas, ctx;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            canvas = document.getElementById('jointTracker');
+            ctx    = canvas.getContext('2d');
+        });   
+
+        // Step One: Set Up KinectJS
+        // Joints you want to track
+        var JOINTS = ['HEAD','SPINE','SHOULDER_CENTER','SHOULDER_LEFT','SHOULDER_RIGHT','ELBOW_LEFT','ELBOW_RIGHT','HAND_LEFT','HAND_RIGHT'];
+
+        // A helper function we'll want to use later with coordinates
+        var jnt = function(j) { return JOINTS.indexOf(j); }
+
+        kinect.setUp({
+            players:  1,                    // # of players, max = 2
+            joints:   JOINTS,               // array of joints to track
+        })
+        .sessionPersist()
+        .modal.make('css/knctModal.css')    // Green modal connection bar
+        .notif.make();
+        // Step Two: Register a joints event listener
+        kinect.onMessage(function() {
+            // As this function is called on every joint update, clear the canvas first.
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            this.sk_len;    // # of people in the frame
+            this.coords;    // A 2D array[m][n] of (x, y, z) coordinates of joints.
+            for(var i = 0; i < JOINTS.length; i++){
+                var centerX = this.coords[0][i].x,
+                centerY = this.coords[0][i].y;
+                ctx.beginPath();
+                console.log(this.coords[0][i]);
+                ctx.arc(centerX, centerY, 10, 0, 2 * Math.PI, false);
+                ctx.fillStyle = 'red';
+                ctx.fill(); 
+            }
+        });
+        // Step Three: Draw a circle for each joint
+
+        // Step Four: Connect your circles to form a skeleton
+
+        // Bonus Step Five: Track multiple people
+
+        </script>
+    </body>
+</html>
