@@ -56,8 +56,8 @@ function initializeDOMElements() {
     
     rawCanvas = document.createElement('canvas');
     rawCanvas.setAttribute('id', 'rawCanvas');
-    rawCanvas.setAttribute('width', $('#container').width());
-    rawCanvas.setAttribute('height', $('#container').height());
+    rawCanvas.setAttribute('width', $('#scream-ripples').width());
+    rawCanvas.setAttribute('height', $('#scream-ripples').height());
     rawCanvas.style.display = SHOW_RAW ? 'block' : 'none';
     document.getElementById('scream-ripples').appendChild(rawCanvas);
     rawContext = rawCanvas.getContext('2d');
