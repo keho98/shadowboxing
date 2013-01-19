@@ -10,6 +10,8 @@
  *
  */
 
+var INPUT = "kinectdepth"; 
+
 function ripple(){
 	var canvas = document.getElementById('scream-ripples');
 	var width = $('#container').width();
@@ -35,4 +37,66 @@ function isCanvasSupported(){
 
 $(document).ready(function() {
 	ripple();
+	setUpKinect();
 });
+
+
+/*
+ * Starts the connection to the Kinect
+ */
+function setUpKinect() {
+	kinect.sessionPersist()
+		  .modal.make('css/knctModal.css')
+		  .notif.make();
+		  
+	kinect.addEventListener('openedSocket', function() {
+		startKinect();
+	});
+}
+
+/*
+ * Starts the socket for depth or RGB messages from KinectSocketServer
+ */
+function startKinect() {
+	if (INPUT != "kinectdepth" && INPUT != "kinectrgb") {
+		console.log("Asking for incorrect socket from Kinect.");
+		return;
+	}
+	
+	if(kinectSocket)
+	{
+		kinectSocket.send( "KILL" );
+		setTimeout(function() {
+			kinectSocket.close();
+			kinectSocket.onopen = kinectSocket.onmessage = kinectSocket = null;
+		}, 300 );
+		return false;
+	}
+	
+	// Web sockets
+	if (INPUT == "kinectdepth") {
+		kinectSocket = kinect.makeDepth(null, true, null);
+	} else if (INPUT == "kinectrgb") {
+		kinectSocket = kinect.makeRGB(null, true, null);
+	}
+
+	kinectSocket.onopen = function() {
+	};
+	
+	kinectSocket.onclose = kinectSocket.onerror = function() {
+		kinectSocket.onclose = kinectSocket.onerror = null;
+		return false;
+	};
+
+	kinectSocket.onmessage = function( e ) {
+		if (e.data.indexOf("data:image/jpeg") == 0) {
+			var image = new Image();
+			image.src = e.data;
+			image.onload = function() {
+				rawContext.drawImage(image, 0, 0, 640, 480);
+			}
+			return false;
+		}
+	};
+}
+
