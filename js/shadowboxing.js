@@ -21,7 +21,8 @@ var JOINTS = ['HAND_RIGHT', 'HEAD', 'HAND_LEFT'];
 var height = 480;
 var width = 640;
 
-var shapes = new Array();
+var shapes = new Array(),
+    silhouettes = new Array();
 
 /*
  * Begin shadowboxing code
@@ -135,6 +136,9 @@ function setUpKinect() {
         if(avg < SCREAM_THRESHOLD) {
             scream = true;
         }
+        else{
+            scream = false;
+        }
         for(var i = 0; i < JOINTS.length; i++){
             var centerX = normalizeX(this.coords[0][i].x);
             var centerY = normalizeY(this.coords[0][i].y);
@@ -146,20 +150,14 @@ function setUpKinect() {
     });
 
     kinect.addEventListener('playerFound', function(args) {
-        $('#demo').css('display', 'none');
+        $('#demo').fadeOut();
     });
 
     kinect.addEventListener('playerLost', function() {   
         scream = false;
         console.log('No Players');
+        $('#demo').fadeIn();
     });
-}
-
-/*
- * Starts the socket for depth or RGB messages from KinectSocketServer
- */
-function startKinect() {	
-    return false;
 }
 
 /*
