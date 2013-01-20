@@ -1,23 +1,9 @@
 /**
- * Shadowboxing: CS 247 P2
- * -----------------------
- * Questions go to Piazza: https://piazza.com/stanford/winter2013/cs247/home
- * Performs background subtraction on a webcam or kinect driver to identify
- * body outlines. Relies on HTML5: <video> <canvas> and getUserMedia().
- * Feel free to configure the constants below to your liking.
- * 
- * Created by Michael Bernstein 2013
+ * By Kevin Ho for CS247 P2
+ * Based on code created by Michael Bernstein 2013
  */
 
 // Student-configurable options below...
-
-// show the after-gaussian blur camera input
-SHOW_RAW = false;
-// show the final shadow
-SHOW_SHADOW = true;
-// input option: kinectdepth (kinect depth sensor), kinectrgb (kinect camera), 
-// or webcam (computer camera)
-var INPUT = "webcam"; 
 // A difference of >= SHADOW_THRESHOLD across RGB space from the background
 // frame is marked as foreground
 var SHADOW_THRESHOLD = 10;
@@ -29,16 +15,16 @@ var BACKGROUND_ALPHA = 0.05;
 var STACK_BLUR_RADIUS = 10; 
 var JOINTS = ['HAND_RIGHT', 'HEAD', 'HAND_LEFT'];
 
-var jnt = function(j) { return JOINTS.indexOf(j); }
+var height = 480;
+var width = 640;
 
 /*
  * Begin shadowboxing code
  */
 var mediaStream, video, rawCanvas, rawContext, shadowCanvas, shadowContext, background = null;
-var kinect, kinectSocket = null;
+var kinect = null;
 var JOINTS = ['HEAD','HAND_LEFT','HAND_RIGHT'];
 
-var canvas,ctx;
 var started = false;
 var scream = false;
 
@@ -57,6 +43,17 @@ $(document).ready(function() {
     });
 });
 
+function jnt(j){ 
+    return JOINTS.indexOf(j); 
+}
+
+function normalizeX(x){
+    return ( ( x ) / 100 ) * width;
+}
+
+function normalizeY(y){
+    return (( y) / 100 ) * height;
+}
 /*
  * Creates the video and canvas elements
  */
@@ -67,8 +64,8 @@ function initializeDOMElements() {
     
     rawCanvas = document.createElement('canvas');
     rawCanvas.setAttribute('id', 'rawCanvas');
-    rawCanvas.setAttribute('width', 640);
-    rawCanvas.setAttribute('height', 480);
+    rawCanvas.setAttribute('width', width);
+    rawCanvas.setAttribute('height', height);
     rawCanvas.style.display = 'none'
     document.getElementById('capture').appendChild(rawCanvas);
     rawContext = rawCanvas.getContext('2d');
@@ -78,8 +75,8 @@ function initializeDOMElements() {
     
     shadowCanvas = document.createElement('canvas');
     shadowCanvas.setAttribute('id', 'shadowCanvas');
-    shadowCanvas.setAttribute('width', 640);
-    shadowCanvas.setAttribute('height', 480);
+    shadowCanvas.setAttribute('width', width);
+    shadowCanvas.setAttribute('height', height);
     shadowCanvas.style.display = 'block';
     document.getElementById('capture').appendChild(shadowCanvas);
     shadowContext = shadowCanvas.getContext('2d');    
@@ -101,42 +98,38 @@ function setUpKinect() {
 		  .notif.make();
 		  
 	kinect.addEventListener('openedSocket', function() {
-		startKinect();
+		console.log("Started kinect");
 	});
 
     kinect.onMessage(function() {
         // As this function is called on every joint update, clear the canvas first.
         this.sk_len;    // # of people in the frame
-        this.coords;    // A 2D array[m][n] of (x, y, z) coordinates of joints.
+        // this.coords  A 2D array[m][n] of (x, y, z) coordinates of joints.
         var d = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_LEFT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_LEFT')].y);
         var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_RIGHT')].y);
         var avg = (d + d2)/2;
-        console.log(avg);
-        if(avg < 40){
-            scream = true;
+        if(avg < 40) scream = true;
+        var ctx = $('#marker').get(0).getContext('2d');
+        ctx.clearRect(0, 0, width, height);
+        for(var i = 0; i < JOINTS.length; i++){
+            var centerX = this.coords[0][i].x;
+            var centerY = this.coords[0][i].y;
+            ctx.beginPath();
+            ctx.arc(normalizeX(centerX),normalizeY(centerY), 10, 0, 2 * Math.PI, false);
+            ctx.fillStyle = 'blue';
+            ctx.fill(); 
+            if(scream){
+                ctx.beginPath();
+            }
         }
-        else scream = false;
-        // for(var i = 0; i < JOINTS.length; i++){
-        //     var centerX = this.coords[0][i].x;
-        //     var centerY = this.coords[0][i].y;
-        //     ctx.beginPath();
-        //     ctx.arc(normalizeX(centerX),normalizeY(centerY), 10, 0, 2 * Math.PI, false);
-        //     if(scream) {
-        //         ctx.fillStyle = 'red';
-        //     }
-        //     else{
-        //         ctx.fillStyle = 'blue'
-        //     }
-        //     ctx.fill(); 
-        // }
     });
 
     kinect.addEventListener('playerFound', function(args) {
-        //Stop loop
+        $('#demo').css('display', 'none');
     });
 
     kinect.addEventListener('noPlayers', function() {   
-        //Show loop
+        $('#demo').css('display', 'block');
     });
 }
 
@@ -144,38 +137,7 @@ function setUpKinect() {
  * Starts the socket for depth or RGB messages from KinectSocketServer
  */
 function startKinect() {	
-	if(kinectSocket)
-	{
-		kinectSocket.send( "KILL" );
-		setTimeout(function() {
-			kinectSocket.close();
-			kinectSocket.onopen = kinectSocket.onmessage = kinectSocket = null;
-		}, 300 );
-		return false;
-	}
-	
-	// Web sockets
-	kinectSocket = kinect.makeRGB(null, true, null);
-
-	kinectSocket.onopen = function() {
-	};
-	
-	kinectSocket.onclose = kinectSocket.onerror = function() {
-		kinectSocket.onclose = kinectSocket.onerror = null;
-		return false;
-	};
-
-	kinectSocket.onmessage = function( e ) {
-		if (e.data.indexOf("data:image/jpeg") == 0) {
-			var image = new Image();
-			image.src = e.data;
-			image.onload = function() {
-				rawContext.drawImage(image, 0, 0, 640, 480);
-			}
-            console.log("Doing thangs")
-			return false;
-		}
-	};
+    return false;
 }
 
 /*
