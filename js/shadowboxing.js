@@ -13,16 +13,19 @@ var BACKGROUND_ALPHA = 0.05;
 // We run a gaussian blur over the input image to reduce random noise 
 // in the background subtraction. Change this radius to trade off noise for precision 
 var STACK_BLUR_RADIUS = 10; 
+var MAX_RADIUS = 100;
 var JOINTS = ['HAND_RIGHT', 'HEAD', 'HAND_LEFT'];
 
 var height = 480;
 var width = 640;
 
+var shapes = new Array();
+
 /*
  * Begin shadowboxing code
  */
 var mediaStream, video, rawCanvas, rawContext, shadowCanvas, shadowContext, background = null;
-var kinect = null;
+var kinect;
 var JOINTS = ['HEAD','HAND_LEFT','HAND_RIGHT'];
 
 var started = false;
@@ -54,6 +57,28 @@ function normalizeX(x){
 function normalizeY(y){
     return (( y) / 100 ) * height;
 }
+
+function updateShape(i){
+    shapes[i].r1 += shapes[i].v_r;
+}
+
+function drawObject(ctx, obj){
+    //console.log(obj.shapeType);
+    ctx.beginPath();
+    switch(obj.shapeType){
+        case 'arc':
+            ctx.arc(obj.x, obj.y, obj.r1, obj.r2, Math.PI*2, true);
+            break;
+    }
+    if(obj.fillStyle){
+        ctx.fillStyle = obj.fillStyle;
+        ctx.fill();
+    }
+    if(obj.strokeStyle){
+        ctx.strokeStyle = obj.strokeStyle;
+        ctx.stroke();
+    }
+}
 /*
  * Creates the video and canvas elements
  */
@@ -82,7 +107,6 @@ function initializeDOMElements() {
     shadowContext = shadowCanvas.getContext('2d');    
 }
 
-
 /*
  * Starts the connection to the Kinect
  */
@@ -109,27 +133,23 @@ function setUpKinect() {
         var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_RIGHT')].y);
         var avg = (d + d2)/2;
         if(avg < 40) scream = true;
-        var ctx = $('#marker').get(0).getContext('2d');
-        ctx.clearRect(0, 0, width, height);
         for(var i = 0; i < JOINTS.length; i++){
-            var centerX = this.coords[0][i].x;
-            var centerY = this.coords[0][i].y;
-            ctx.beginPath();
-            ctx.arc(normalizeX(centerX),normalizeY(centerY), 10, 0, 2 * Math.PI, false);
-            ctx.fillStyle = 'blue';
-            ctx.fill(); 
-            if(scream){
-                ctx.beginPath();
+            var centerX = normalizeX(this.coords[0][i].x);
+            var centerY = normalizeY(this.coords[0][i].y);
+            if(scream && i === jnt('HEAD')){
+                shapes.push({x:centerX, y:centerY + 50, v_x:0, v_y:0,shapeType: 'arc', strokeStyle: 'rgb(0,0,200)', r1: 50, r2: 0, v_r: 20});
             }
         }
+ 
     });
 
     kinect.addEventListener('playerFound', function(args) {
         $('#demo').css('display', 'none');
     });
 
-    kinect.addEventListener('noPlayers', function() {   
-        $('#demo').css('display', 'block');
+    kinect.addEventListener('playerLost', function() {   
+        scream = false;
+        console.log('No Players');
     });
 }
 
@@ -202,7 +222,15 @@ function renderShadow() {
   if (!background) {
     return;
   }
-  
+  var ctx = $('#marker').get(0).getContext('2d');
+  ctx.clearRect(0, 0, width, height);
+    for(var i = 0; i < shapes.length; i++){
+        drawObject(ctx,shapes[i]);
+        updateShape(i);
+        if(shapes[i].r1 > 500){
+            shapes.splice(i,i);
+        }
+    }
   pixelData = getShadowData();
   shadowContext.putImageData(pixelData, 0, 0);
   setTimeout(renderShadow, 10);
@@ -243,11 +271,8 @@ function getShadowData() {
                 pixelData.data[i+2] = 0;                
             }
         } else {
-            // background
-            
             //  update model of background, since we think this is in the background
             updateBackground(i, rCurrent, gCurrent, bCurrent, rBackground, gBackground, bBackground);
-            
             // now set the background color
             pixelData.data[i] = 255;
             pixelData.data[i+1] = 255;
@@ -255,7 +280,6 @@ function getShadowData() {
             pixelData.data[i+3] = 0;
         }        
     }
-    
     return pixelData; 
 }
 
