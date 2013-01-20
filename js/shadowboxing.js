@@ -38,13 +38,16 @@ $(document).ready(function() {
     initializeDOMElements();
 	setUpKinect();
 	setUpWebCam();
-    $("#background").attr('disabled', true);
+    $('#background').attr('disabled', true);
     $('#background').click(function() {
         setBackground();
         if (!started) {
             renderShadow();
         }
     });
+    $('canvas').click(function(){
+        takeScreenshot();
+    })
 });
 
 function jnt(j){ 
@@ -206,6 +209,18 @@ function getCameraData() {
     }    
 }
 
+function takeScreenshot(){
+    var imageData = shadowContext.getImageData(0,0, width,height);
+    var destCtx = $('#grid').get(0).getContext('2d');
+    var newCanvas = $("<canvas>")
+        .attr("width", imageData.width)
+        .attr("height", imageData.height)[0];
+
+    newCanvas.getContext("2d").putImageData(imageData, 0, 0);
+    //destCtx.scale(.8,.8);
+    destCtx.drawImage(newCanvas, 0, 0, width/4, height/4);
+}
+
 /*
  * Remembers the current pixels as the background to subtract.
  */
@@ -231,7 +246,7 @@ function renderShadow() {
             shapes.splice(i,i);
         }
     }
-  pixelData = getShadowData();
+  var pixelData = getShadowData();
   shadowContext.putImageData(pixelData, 0, 0);
   setTimeout(renderShadow, 10);
 }
