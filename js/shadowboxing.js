@@ -13,7 +13,9 @@ var BACKGROUND_ALPHA = 0.05;
 // We run a gaussian blur over the input image to reduce random noise 
 // in the background subtraction. Change this radius to trade off noise for precision 
 var STACK_BLUR_RADIUS = 10; 
-var MAX_RADIUS = 100;
+var MAX_RADIUS = 100,
+    HEAD_OFFSET = 100,
+    SCREAM_THRESHOLD = 40;
 var JOINTS = ['HAND_RIGHT', 'HEAD', 'HAND_LEFT'];
 
 var height = 480;
@@ -33,11 +35,9 @@ var scream = false;
 
 $(document).ready(function() {
     initializeDOMElements();
-    $("#background").attr('disabled', true);
 	setUpKinect();
 	setUpWebCam();
-    canvas = document.getElementById('jointTracker');
-    ctx = canvas.getContext('2d');
+    $("#background").attr('disabled', true);
     $('#background').click(function() {
         setBackground();
         if (!started) {
@@ -132,12 +132,14 @@ function setUpKinect() {
         var d = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_LEFT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_LEFT')].y);
         var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_RIGHT')].y);
         var avg = (d + d2)/2;
-        if(avg < 40) scream = true;
+        if(avg < SCREAM_THRESHOLD) {
+            scream = true;
+        }
         for(var i = 0; i < JOINTS.length; i++){
             var centerX = normalizeX(this.coords[0][i].x);
             var centerY = normalizeY(this.coords[0][i].y);
             if(scream && i === jnt('HEAD')){
-                shapes.push({x:centerX, y:centerY + 50, v_x:0, v_y:0,shapeType: 'arc', strokeStyle: 'rgb(0,0,200)', r1: 50, r2: 0, v_r: 20});
+                shapes.push({x:centerX, y:centerY + HEAD_OFFSET, v_x:0, v_y:0,shapeType: 'arc', strokeStyle: 'rgb(0,0,200)', r1: 50, r2: 0, v_r: 20});
             }
         }
  
