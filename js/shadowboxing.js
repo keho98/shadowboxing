@@ -24,6 +24,8 @@ var width = 640;
 var shapes = new Array(),
     silhouettes = new Array();
 
+var index = 0;
+
 /*
  * Begin shadowboxing code
  */
@@ -215,10 +217,24 @@ function takeScreenshot(){
     var newCanvas = $("<canvas>")
         .attr("width", imageData.width)
         .attr("height", imageData.height)[0];
-
+    var x = Math.floor(index / 4);
+    var y = Math.floor(index % 4)
     newCanvas.getContext("2d").putImageData(imageData, 0, 0);
-    //destCtx.scale(.8,.8);
-    destCtx.drawImage(newCanvas, 0, 0, width/4, height/4);
+    destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
+    index++;
+}
+
+function drawGrid(){
+    var destCtx = $('#grid').get(0).getContext('2d');
+    var newCanvas = $("<canvas>")
+        .attr("width", imageData.width)
+        .attr("height", imageData.height)[0];
+    for(var i = 0; i < silhouettes.length; i++){
+        var x = Math.floor(i / 4);
+        var y = Math.floor(i % 4);
+        newCanvas.getContext("2d").putImageData(imageData, 0, 0);
+        destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
+    }
 }
 
 /*
