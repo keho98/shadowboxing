@@ -9,6 +9,8 @@
         <script type="text/javascript">
         var canvas, ctx;
         var scream = true;
+        var height = 480;
+        var width = 640;
 
         document.addEventListener('DOMContentLoaded', function() {
             canvas = document.getElementById('jointTracker');
@@ -19,11 +21,21 @@
         // Joints you want to track
         var JOINTS = ['HEAD','HAND_LEFT','HAND_RIGHT'];
 
+        function normalizeX(x){
+            return ( ( x ) / 100 ) * width;
+        }
+
+        function normalizeY(y){
+            return (( y) / 100 ) * height;
+        }
         // A helper function we'll want to use later with coordinates
         var jnt = function(j) { return JOINTS.indexOf(j); }
 
         kinect.setUp({
             players:  1,                    // # of players, max = 2
+            relative    : true,             //tracking mode
+            meters      : false,            //tracking mode continued
+            sensitivity : 1.2,              //semsitivity
             joints:   JOINTS,               // array of joints to track
         })
         .sessionPersist()
@@ -47,7 +59,7 @@
                 var centerX = this.coords[0][i].x;
                 var centerY = this.coords[0][i].y;
                 ctx.beginPath();
-                ctx.arc(centerX, centerY, 10, 0, 2 * Math.PI, false);
+                ctx.arc(normalizeX(centerX),normalizeY(centerY), 10, 0, 2 * Math.PI, false);
                 if(scream) {
                     ctx.fillStyle = 'red';
                 }
@@ -61,6 +73,7 @@
         function distance(x,x1,y,y1){
             return Math.sqrt((x-x1) * (x-x1) + (y-y1) * (y-y1))
         }
+
         // Step Three: Draw a circle for each joint
 
         // Step Four: Connect your circles to form a skeleton
