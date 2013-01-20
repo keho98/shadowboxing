@@ -27,25 +27,33 @@ var BACKGROUND_ALPHA = 0.05;
 // We run a gaussian blur over the input image to reduce random noise 
 // in the background subtraction. Change this radius to trade off noise for precision 
 var STACK_BLUR_RADIUS = 10; 
+var JOINTS = ['HAND_RIGHT', 'HEAD', 'HAND_LEFT'];
 
+var jnt = function(j) { return JOINTS.indexOf(j); }
 
 /*
  * Begin shadowboxing code
  */
 var mediaStream, video, rawCanvas, rawContext, shadowCanvas, shadowContext, background = null;
 var kinect, kinectSocket = null;
+var JOINTS = ['HEAD','HAND_LEFT','HAND_RIGHT'];
 
+var canvas,ctx;
 var started = false;
+var scream = true;
 
 $(document).ready(function() {
     initializeDOMElements();
 
     $("#background").attr('disabled', true);
-	if (INPUT == "kinectdepth" || INPUT == "kinectrgb") {
+	//if (INPUT == "kinectdepth" || INPUT == "kinectrgb") {
 		setUpKinect();
-	} else if (INPUT == "webcam") {
+	//} else if (INPUT == "webcam") {
 		setUpWebCam();
-	}
+	//}
+    canvas = document.getElementById('jointTracker');
+    ctx    = canvas.getContext('2d');
+
 
     $('#background').click(function() {
         setBackground();
@@ -67,7 +75,7 @@ function initializeDOMElements() {
     rawCanvas.setAttribute('id', 'rawCanvas');
     rawCanvas.setAttribute('width', 640);
     rawCanvas.setAttribute('height', 480);
-    rawCanvas.style.display = SHOW_RAW ? 'block' : 'none';
+    rawCanvas.style.display = 'none'
     document.getElementById('capture').appendChild(rawCanvas);
     rawContext = rawCanvas.getContext('2d');
     // mirror horizontally, so it acts like a reflection
@@ -78,7 +86,7 @@ function initializeDOMElements() {
     shadowCanvas.setAttribute('id', 'shadowCanvas');
     shadowCanvas.setAttribute('width', 640);
     shadowCanvas.setAttribute('height', 480);
-    shadowCanvas.style.display = SHOW_SHADOW ? 'block' : 'none';
+    shadowCanvas.style.display = 'block';
     document.getElementById('capture').appendChild(shadowCanvas);
     shadowContext = shadowCanvas.getContext('2d');    
 }
@@ -88,23 +96,56 @@ function initializeDOMElements() {
  * Starts the connection to the Kinect
  */
 function setUpKinect() {
-	kinect.sessionPersist()
+	kinect.setUp({
+            players:  1,                    // # of players, max = 2
+            relative    : true,             //tracking mode
+            meters      : false,            //tracking mode continued
+            sensitivity : 1.2,              //semsitivity
+            joints:   JOINTS,               // array of joints to track
+        }).sessionPersist()
 		  .modal.make('css/knctModal.css')
 		  .notif.make();
 		  
 	kinect.addEventListener('openedSocket', function() {
 		startKinect();
 	});
+
+    kinect.onMessage(function() {
+        // As this function is called on every joint update, clear the canvas first.
+        this.sk_len;    // # of people in the frame
+        this.coords;    // A 2D array[m][n] of (x, y, z) coordinates of joints.
+        var d = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_LEFT')].x,this.coords[0][jnt('HEAD')].y + 3,this.coords[0][jnt('HAND_LEFT')].y);
+        var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y + 3,this.coords[0][jnt('HAND_RIGHT')].y);
+        var avg = (d + d2)/2;
+        console.log(avg);
+        if(avg < 40){
+            scream = true;
+        }
+        else scream = false;
+        // for(var i = 0; i < JOINTS.length; i++){
+        //     var centerX = this.coords[0][i].x;
+        //     var centerY = this.coords[0][i].y;
+        //     ctx.beginPath();
+        //     ctx.arc(normalizeX(centerX),normalizeY(centerY), 10, 0, 2 * Math.PI, false);
+        //     if(scream) {
+        //         ctx.fillStyle = 'red';
+        //     }
+        //     else{
+        //         ctx.fillStyle = 'blue'
+        //     }
+        //     ctx.fill(); 
+        // }
+    });
 }
 
 /*
  * Starts the socket for depth or RGB messages from KinectSocketServer
  */
 function startKinect() {
-	if (INPUT != "kinectdepth" && INPUT != "kinectrgb") {
-		console.log("Asking for incorrect socket from Kinect.");
-		return;
-	}
+	//if (INPUT != "kinectdepth" && INPUT != "kinectrgb") {
+		//console.log("Asking for incorrect socket from Kinect.");
+		//return;
+	//}
 	
 	if(kinectSocket)
 	{
@@ -117,11 +158,7 @@ function startKinect() {
 	}
 	
 	// Web sockets
-	if (INPUT == "kinectdepth") {
-		kinectSocket = kinect.makeDepth(null, true, null);
-	} else if (INPUT == "kinectrgb") {
-		kinectSocket = kinect.makeRGB(null, true, null);
-	}
+	kinectSocket = kinect.makeRGB(null, true, null);
 
 	kinectSocket.onopen = function() {
 	};
@@ -138,6 +175,7 @@ function startKinect() {
 			image.onload = function() {
 				rawContext.drawImage(image, 0, 0, 640, 480);
 			}
+            console.log("Doing thangs")
 			return false;
 		}
 	};
@@ -184,6 +222,7 @@ function getCameraData() {
         rawContext.drawImage(video, 0, 0, rawCanvas.width, rawCanvas.height);
         stackBlurCanvasRGB('rawCanvas', 0, 0, rawCanvas.width, rawCanvas.height, STACK_BLUR_RADIUS);        
         var pixelData = rawContext.getImageData(0, 0, rawCanvas.width, rawCanvas.height);
+        //console.log(pixelData);
         return pixelData;
     }    
 }
@@ -207,7 +246,7 @@ function renderShadow() {
   
   pixelData = getShadowData();
   shadowContext.putImageData(pixelData, 0, 0);
-  setTimeout(renderShadow, 0);
+  setTimeout(renderShadow, 10);
 }
 
 /*
@@ -217,7 +256,9 @@ function renderShadow() {
 
 function getShadowData() {
     var pixelData = getCameraData();
-
+    var randomR = getRandomInt(0,255);
+    var randomG = getRandomInt(0,255);
+    var randomB = getRandomInt(0,255);
     // Each pixel gets four array indices: [r, g, b, alpha]
     for (var i=0; i<pixelData.data.length; i=i+4) {
         var rCurrent = pixelData.data[i];
@@ -232,9 +273,16 @@ function getShadowData() {
         
         if (distance >= SHADOW_THRESHOLD) {
             // foreground, show shadow
-            pixelData.data[i] = 0;
-            pixelData.data[i+1] = 0;
-            pixelData.data[i+2] = 0;
+            if(scream){
+                pixelData.data[i] = randomR;
+                pixelData.data[i+1] = randomG;
+                pixelData.data[i+2] = randomB;
+            }
+            else{
+                pixelData.data[i] = 0;
+                pixelData.data[i+1] = 0;
+                pixelData.data[i+2] = 0;                
+            }
         } else {
             // background
             
@@ -263,4 +311,12 @@ function updateBackground(i, rCurrent, gCurrent, bCurrent, rBackground, gBackgro
  */
 function pixelDistance(r1, g1, b1, r2, g2, b2) {
     return Math.abs((r1+g1+b1)/3 - (r2+g2+b2)/3);
+}
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function distance(x,x1,y,y1){
+    return Math.sqrt((x-x1) * (x-x1) + (y-y1) * (y-y1))
 }
