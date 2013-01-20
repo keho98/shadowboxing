@@ -7,3 +7,7 @@ canvas{
 	position:absolute;
 	top:40;
 }
+
+#grid{
+	z-index: -1;
+}

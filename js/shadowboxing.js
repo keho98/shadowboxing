@@ -222,10 +222,12 @@ function takeScreenshot(){
     newCanvas.getContext("2d").putImageData(imageData, 0, 0);
     destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
     index++;
+    addAlpha(destCtx);
 }
 
 function drawGrid(){
     var destCtx = $('#grid').get(0).getContext('2d');
+    destCtx.clearRect(0,0, width, height);
     var newCanvas = $("<canvas>")
         .attr("width", imageData.width)
         .attr("height", imageData.height)[0];
@@ -235,6 +237,7 @@ function drawGrid(){
         newCanvas.getContext("2d").putImageData(imageData, 0, 0);
         destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
     }
+    addAlpha(destCtx);
 }
 
 /*
@@ -319,6 +322,13 @@ function updateBackground(i, rCurrent, gCurrent, bCurrent, rBackground, gBackgro
     background.data[i+1] = Math.round(BACKGROUND_ALPHA * gCurrent + (1-BACKGROUND_ALPHA) * gBackground);
     background.data[i+2] = Math.round(BACKGROUND_ALPHA * bCurrent + (1-BACKGROUND_ALPHA) * bBackground);
 }
+
+function addAlpha(ctx){
+        ctx.beginPath();
+        ctx.rect(0,0,width,height);
+        ctx.fillStyle = 'rgba(256,256,256, .5)';
+        ctx.fill();
+    }
 
 /*
  * Returns the distance between two pixels in grayscale space
