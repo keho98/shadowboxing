@@ -40,21 +40,15 @@ var JOINTS = ['HEAD','HAND_LEFT','HAND_RIGHT'];
 
 var canvas,ctx;
 var started = false;
-var scream = true;
+var scream = false;
 
 $(document).ready(function() {
     initializeDOMElements();
-
     $("#background").attr('disabled', true);
-	//if (INPUT == "kinectdepth" || INPUT == "kinectrgb") {
-		setUpKinect();
-	//} else if (INPUT == "webcam") {
-		setUpWebCam();
-	//}
+	setUpKinect();
+	setUpWebCam();
     canvas = document.getElementById('jointTracker');
-    ctx    = canvas.getContext('2d');
-
-
+    ctx = canvas.getContext('2d');
     $('#background').click(function() {
         setBackground();
         if (!started) {
@@ -114,8 +108,8 @@ function setUpKinect() {
         // As this function is called on every joint update, clear the canvas first.
         this.sk_len;    // # of people in the frame
         this.coords;    // A 2D array[m][n] of (x, y, z) coordinates of joints.
-        var d = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_LEFT')].x,this.coords[0][jnt('HEAD')].y + 3,this.coords[0][jnt('HAND_LEFT')].y);
-        var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y + 3,this.coords[0][jnt('HAND_RIGHT')].y);
+        var d = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_LEFT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_LEFT')].y);
+        var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_RIGHT')].y);
         var avg = (d + d2)/2;
         console.log(avg);
         if(avg < 40){
@@ -136,17 +130,20 @@ function setUpKinect() {
         //     ctx.fill(); 
         // }
     });
+
+    kinect.addEventListener('playerFound', function(args) {
+        //Stop loop
+    });
+
+    kinect.addEventListener('noPlayers', function() {   
+        //Show loop
+    });
 }
 
 /*
  * Starts the socket for depth or RGB messages from KinectSocketServer
  */
-function startKinect() {
-	//if (INPUT != "kinectdepth" && INPUT != "kinectrgb") {
-		//console.log("Asking for incorrect socket from Kinect.");
-		//return;
-	//}
-	
+function startKinect() {	
 	if(kinectSocket)
 	{
 		kinectSocket.send( "KILL" );
