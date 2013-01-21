@@ -69,7 +69,6 @@ function updateShape(i){
 }
 
 function drawObject(ctx, obj){
-    //console.log(obj.shapeType);
     ctx.beginPath();
     switch(obj.shapeType){
         case 'arc':
@@ -139,10 +138,16 @@ function setUpKinect() {
         var d2 = distance(this.coords[0][jnt('HEAD')].x,this.coords[0][jnt('HAND_RIGHT')].x,this.coords[0][jnt('HEAD')].y - 35,this.coords[0][jnt('HAND_RIGHT')].y);
         var avg = (d + d2)/2;
         if(avg < SCREAM_THRESHOLD) {
+            if(!scream){
+                takeScreenshot();
+                setTimeout(drawGrid,300);
+            }
             scream = true;
         }
         else{
             scream = false;
+            var destCtx = $('#grid').get(0).getContext('2d');
+            addAlpha(destCtx, .05);
         }
         for(var i = 0; i < JOINTS.length; i++){
             var centerX = normalizeX(this.coords[0][i].x);
@@ -213,31 +218,36 @@ function getCameraData() {
 
 function takeScreenshot(){
     var imageData = shadowContext.getImageData(0,0, width,height);
-    var destCtx = $('#grid').get(0).getContext('2d');
-    var newCanvas = $("<canvas>")
-        .attr("width", imageData.width)
-        .attr("height", imageData.height)[0];
-    var x = Math.floor(index / 4);
-    var y = Math.floor(index % 4)
-    newCanvas.getContext("2d").putImageData(imageData, 0, 0);
-    destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
-    index++;
-    addAlpha(destCtx);
+    //var destCtx = $('#grid').get(0).getContext('2d');
+    //var newCanvas = $("<canvas>")
+    //    .attr("width", imageData.width)
+    //    .attr("height", imageData.height)[0];
+    //var x = Math.floor(index / 4);
+    //var y = Math.floor(index % 4)
+    //newCanvas.getContext("2d").putImageData(imageData, 0, 0);
+    //destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
+    //index++;
+    silhouettes.push(imageData);
+    if(silhouettes.length > 16){
+        silhouettes.splice(0,1);
+    }
+    //addAlpha(destCtx);
 }
 
 function drawGrid(){
+    console.log(silhouettes);
     var destCtx = $('#grid').get(0).getContext('2d');
     destCtx.clearRect(0,0, width, height);
     var newCanvas = $("<canvas>")
-        .attr("width", imageData.width)
-        .attr("height", imageData.height)[0];
+        .attr("width", width)
+        .attr("height", height)[0];
     for(var i = 0; i < silhouettes.length; i++){
         var x = Math.floor(i / 4);
         var y = Math.floor(i % 4);
-        newCanvas.getContext("2d").putImageData(imageData, 0, 0);
+        newCanvas.getContext("2d").putImageData(silhouettes[i], 0, 0);
         destCtx.drawImage(newCanvas, x * width/4, y * height/4, width/4, height/4);
     }
-    addAlpha(destCtx);
+    addAlpha(destCtx,.5);
 }
 
 /*
@@ -323,10 +333,10 @@ function updateBackground(i, rCurrent, gCurrent, bCurrent, rBackground, gBackgro
     background.data[i+2] = Math.round(BACKGROUND_ALPHA * bCurrent + (1-BACKGROUND_ALPHA) * bBackground);
 }
 
-function addAlpha(ctx){
+function addAlpha(ctx,a){
         ctx.beginPath();
         ctx.rect(0,0,width,height);
-        ctx.fillStyle = 'rgba(256,256,256, .5)';
+        ctx.fillStyle = 'rgba(256,256,256,' +a +')';
         ctx.fill();
     }
 

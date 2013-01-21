@@ -5,7 +5,9 @@ canvas{
 
 #demo{
 	position:absolute;
-	top:40;
+	top:20;
+	height: 480px;
+	left:200;
 }
 
 #grid{
